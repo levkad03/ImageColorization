@@ -33,12 +33,16 @@ class ColorizationDataset(Dataset):
 
         img_tensor = self.transform(img)
 
-        img_lab = rgb2lab(img_tensor.permute(1, 2, 0).numpy())
+        img_gray = transforms.functional.to_grayscale(img)
 
-        L = torch.from_numpy(img_lab[:, :, 0]) / 50 - 1
-        ab = torch.from_numpy(img_lab[:, :, 1:] / 128)
+        # img_lab = rgb2lab(img_tensor.permute(1, 2, 0).numpy())
 
-        L = L.unsqueeze(0)
-        ab = ab.permute(2, 0, 1)
+        # L = torch.from_numpy(img_lab[:, :, 0]) / 50 - 1
+        # ab = torch.from_numpy(img_lab[:, :, 1:] / 128)
 
-        return {"L": L, "ab": ab, "orig_img": img_tensor}
+        # L = L.unsqueeze(0)
+        # ab = ab.permute(2, 0, 1)
+
+        img_gray = self.transform(img_gray)
+
+        return img_gray, img_tensor

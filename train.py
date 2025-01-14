@@ -1,1 +1,112 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, random_split
+from tqdm import tqdm
 
+from dataset import ColorizationDataset
+from model import AutoEncoder
+from utils import load_checkpoint, save_checkpoint, save_predictions
+
+seed = 123
+
+torch.manual_seed(seed)
+
+LEARNING_RATE = 2e-5
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+BATCH_SIZE = 16
+WEIGHT_DECAY = 0
+EPOCHS = 100
+NUM_WORKERS = 2
+PIN_MEMORY = True
+DATA_PATH = "data"
+LOAD_MODEL = False
+OUTPUT_DIR = "predictions"
+
+
+# TODO: move to "utils" file
+def create_dataloader(
+    dataset,
+    batch_size=32,
+    num_workers=2,
+    pin_memory=True,
+    train_split=0.8,
+    random_seed=123,
+):
+    torch.manual_seed(random_seed)
+
+    total_size = len(dataset)
+    train_size = int(train_split * total_size)
+    test_size = total_size - train_size
+
+    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+
+    return train_loader, test_loader
+
+
+def train_fn(loader, model, optimizer, loss_fn, scaler, epoch):
+    loop = tqdm(loader, desc=f"Epoch: {epoch}")
+    for batch_idx, (data, targets) in enumerate(loop):
+        data = data.to(device=DEVICE)
+        targets = targets.to(device=DEVICE)
+
+        # forward
+        with torch.cuda.amp.autocast():
+            predictions = model(data)
+            loss = loss_fn(predictions, targets)
+
+        # backward
+        optimizer.zero_grad()
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
+        # update tqdm loop
+        loop.set_postfix(loss=loss.item())
+
+
+def main():
+    model = AutoEncoder().to(DEVICE)
+    loss_fn = nn.MSELoss()
+    optimizer = optim.Adam(
+        model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
+    )
+    scaler = torch.cuda.amp.GradScaler()
+
+    dataset = ColorizationDataset(DATA_PATH)
+
+    train_loader, test_loader = create_dataloader(dataset, BATCH_SIZE)
+
+    if LOAD_MODEL:
+        load_checkpoint(torch.load("my_checkpoint.pth.tar"), model)
+
+    for epoch in range(EPOCHS):
+        train_fn(train_loader, model, optimizer, loss_fn, scaler, epoch)
+
+        checkpoint = {
+            "state_dict": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+        }
+        save_checkpoint(checkpoint)
+
+        save_predictions(model, test_loader, OUTPUT_DIR, DEVICE, n_samples=20)
+
+
+if __name__ == "__main__":
+    main()
