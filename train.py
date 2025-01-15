@@ -30,7 +30,7 @@ def train_fn(loader, model, optimizer, loss_fn, scaler, epoch):
         targets = targets.to(device=DEVICE)
 
         # forward
-        with torch.cuda.amp.autocast():
+        with torch.amp.autocast(DEVICE):
             predictions = model(data)
             loss = loss_fn(predictions, targets)
 
@@ -50,7 +50,7 @@ def main():
     optimizer = optim.Adam(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
     )
-    scaler = torch.cuda.amp.GradScaler()
+    scaler = torch.amp.GradScaler(DEVICE)
 
     dataset = ColorizationDataset(DATA_PATH)
 
