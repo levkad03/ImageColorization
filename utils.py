@@ -1,8 +1,7 @@
 import os
 
-import numpy as np
 import torch
-from skimage.color import lab2rgb
+from torch.utils.data import DataLoader, random_split
 from torchvision.utils import save_image
 
 
@@ -39,8 +38,47 @@ def save_predictions(model, loader, output_dir, device, n_samples=10):
 
                 pred_img = torch.from_numpy(pred_img).float().cpu()
 
+                save_image(
+                    original[i], os.path.join(output_dir, f"original_{idx}_{i}.jpg")
+                )
+
                 save_image(pred_img, os.path.join(output_dir, img_name))
 
                 saved_count += 1
 
     model.train()
+
+
+def create_dataloader(
+    dataset,
+    batch_size=32,
+    num_workers=2,
+    pin_memory=True,
+    train_split=0.8,
+    random_seed=123,
+):
+    torch.manual_seed(random_seed)
+
+    total_size = len(dataset)
+    train_size = int(train_split * total_size)
+    test_size = total_size - train_size
+
+    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+
+    return train_loader, test_loader
