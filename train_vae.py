@@ -3,9 +3,14 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 
-from autoencoder import AutoEncoder
 from dataset import ColorizationDataset
-from utils import create_dataloader, load_checkpoint, save_checkpoint, save_predictions
+from utils import (
+    create_dataloader,
+    load_checkpoint,
+    save_checkpoint,
+    save_predictions_vae,
+)
+from vae import VariationalAutoEncoder, loss_function
 
 seed = 123
 
@@ -23,7 +28,7 @@ LOAD_MODEL = False
 OUTPUT_DIR = "predictions"
 
 
-def train_fn(loader, model, optimizer, loss_fn, scaler, epoch):
+def train_fn(loader, model, optimizer, scaler, epoch):
     loop = tqdm(loader, desc=f"Epoch: {epoch}")
     for batch_idx, (data, targets) in enumerate(loop):
         data = data.to(device=DEVICE)
@@ -31,8 +36,8 @@ def train_fn(loader, model, optimizer, loss_fn, scaler, epoch):
 
         # forward
         with torch.amp.autocast(DEVICE):
-            predictions = model(data)
-            loss = loss_fn(predictions, targets)
+            recon_batch, mu, log_var = model(data)
+            loss = loss_function(recon_batch, data, mu, log_var)
 
         # backward
         optimizer.zero_grad()
@@ -45,8 +50,7 @@ def train_fn(loader, model, optimizer, loss_fn, scaler, epoch):
 
 
 def main():
-    model = AutoEncoder().to(DEVICE)
-    loss_fn = nn.MSELoss()
+    model = VariationalAutoEncoder(latent_dim=2, in_channels=1).to(DEVICE)
     optimizer = optim.Adam(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
     )
@@ -57,18 +61,18 @@ def main():
     train_loader, test_loader = create_dataloader(dataset, BATCH_SIZE)
 
     if LOAD_MODEL:
-        load_checkpoint(torch.load("my_checkpoint.pth.tar"), model)
+        load_checkpoint(torch.load("vae_checkpoint.pth.tar"), model)
 
     for epoch in range(EPOCHS):
-        train_fn(train_loader, model, optimizer, loss_fn, scaler, epoch)
+        train_fn(train_loader, model, optimizer, scaler, epoch)
 
         checkpoint = {
             "state_dict": model.state_dict(),
             "optimizer": optimizer.state_dict(),
         }
-        save_checkpoint(checkpoint)
+        save_checkpoint(checkpoint, filename="vae_checkpoint.pth.tar")
 
-        save_predictions(model, test_loader, OUTPUT_DIR, DEVICE, n_samples=20)
+        save_predictions_vae(model, test_loader, OUTPUT_DIR, DEVICE, n_samples=20)
 
 
 if __name__ == "__main__":

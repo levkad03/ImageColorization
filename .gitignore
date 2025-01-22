@@ -166,3 +166,5 @@ models
 my_checkpoint.pth.tar
 saved_images
 predictions
+predictions_ae
+vae_checkpoint.pth.tar
