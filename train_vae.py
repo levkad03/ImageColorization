@@ -50,7 +50,7 @@ def train_fn(loader, model, optimizer, scaler, epoch):
 
 
 def main():
-    model = VariationalAutoEncoder(latent_dim=2, in_channels=1).to(DEVICE)
+    model = VariationalAutoEncoder(latent_dim=256, in_channels=1).to(DEVICE)
     optimizer = optim.Adam(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
     )

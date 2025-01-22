@@ -24,11 +24,13 @@ class VariationalAutoEncoder(nn.Module):
             nn.MaxPool2d(2, 2),
         )
 
-        # latent space
-        self.fc_mu = nn.Linear(128 * 32 * 32, latent_dim)
-        self.fc_gvar = nn.Linear(128 * 32 * 32, latent_dim)
+        self.hidden_dim = 128 * 32 * 32
 
-        self.decoder_input = nn.Linear(latent_dim, 128 * 32 * 32)
+        # latent space
+        self.fc_mu = nn.Linear(self.hidden_dim, latent_dim)
+        self.fc_gvar = nn.Linear(self.hidden_dim, latent_dim)
+
+        self.decoder_input = nn.Linear(latent_dim, self.hidden_dim)
 
         self.decoder = nn.Sequential(
             # first deconv
