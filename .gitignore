@@ -168,3 +168,4 @@ saved_images
 predictions
 predictions_ae
 vae_checkpoint.pth.tar
+unet_checkpoint.pth.tar
