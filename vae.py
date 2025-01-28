@@ -22,9 +22,13 @@ class VariationalAutoEncoder(nn.Module):
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
+            # fourth conv
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
         )
 
-        self.hidden_dim = 128 * 32 * 32
+        self.hidden_dim = 128 * 16 * 16
 
         # latent space
         self.fc_mu = nn.Linear(self.hidden_dim, latent_dim)
@@ -34,12 +38,15 @@ class VariationalAutoEncoder(nn.Module):
 
         self.decoder = nn.Sequential(
             # first deconv
-            nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
+            nn.ConvTranspose2d(128, 128, kernel_size=2, stride=2),
             nn.ReLU(),
             # second deconv
-            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2),
+            nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),
             nn.ReLU(),
             # third deconv
+            nn.ConvTranspose2d(64, 32, kernel_size=2, stride=2),
+            nn.ReLU(),
+            # fourth deconv
             nn.ConvTranspose2d(32, 3, kernel_size=2, stride=2),
             nn.ReLU(),
         )
@@ -58,7 +65,7 @@ class VariationalAutoEncoder(nn.Module):
 
     def decode(self, z):
         z = self.decoder_input(z)
-        z = z.view(-1, 128, 32, 32)
+        z = z.view(-1, 128, 16, 16)
         return self.decoder(z)
 
     def forward(self, x):
